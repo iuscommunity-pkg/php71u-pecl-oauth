@@ -1,34 +1,47 @@
+# IUS spec file for php71u-pecl-oauth, forked from Fedora:
 %{!?__pecl:      %global __pecl       %{_bindir}/pecl}
 
 %global pecl_name oauth
 %global with_zts  0%{?__ztsphp:1}
 %global ini_name  40-%{pecl_name}.ini
+%global php_base php71u
 
-Name:		php-pecl-oauth	
+Name:		%{php_base}-pecl-%{pecl_name}
 Version:	2.0.2
-Release:	3%{?dist}
+Release:	1.ius%{?dist}
 Summary:	PHP OAuth consumer extension
 Group:		Development/Languages
 License:	BSD
 URL:		http://pecl.php.net/package/oauth
 Source0:	http://pecl.php.net/get/%{pecl_name}-%{version}.tgz
 
-BuildRequires:	php-devel > 7
-BuildRequires:	php-pear
+BuildRequires:	%{php_base}-devel
+BuildRequires:	pecl >= 1.10.0
 BuildRequires:	libcurl-devel
 BuildRequires:	pcre-devel
 
 Requires:	php(zend-abi) = %{php_zend_api}
 Requires:	php(api) = %{php_core_api}
 
+Requires(post): pecl >= 1.10.0
+Requires(postun): pecl >= 1.10.0
+
 Provides:	php-pecl(%{pecl_name}) = %{version}
 Provides:	php-pecl(%{pecl_name})%{_isa} = %{version}
 Provides:	php-%{pecl_name} = %{version}
 Provides:	php-%{pecl_name}%{_isa} = %{version}
 
+Provides:       php-pecl-%{pecl_name} = %{version}
+Provides:	php-pecl-%{pecl_name}%{?_isa} = %{version}
+Provides:       %{php_base}-%{pecl_name} = %{version}
+Provides:       %{php_base}-pecl(%{pecl_name}) = %{version}
+Provides:	%{php_base}-pecl(%{pecl_name})%{?_isa} = %{version}
+Provides:	%{php_base}-%{pecl_name}%{?_isa} = %{version}
+
+Conflicts:	php-pecl-%{pecl_name} < %{version}
 
 %description
-OAuth is an authorization protocol built on top of HTTP which allows 
+OAuth is an authorization protocol built on top of HTTP which allows
 applications to securely access data without having to store
 user names and passwords.
 
@@ -55,16 +68,18 @@ cp -pr NTS ZTS
 
 
 %build
-cd NTS
+pushd NTS
 %{_bindir}/phpize
 %configure --with-php-config=%{_bindir}/php-config
 make %{?_smp_mflags}
+popd
 
 %if %{with_zts}
-cd ../ZTS
+pushd ZTS
 %{_bindir}/zts-phpize
 %configure --with-php-config=%{_bindir}/zts-php-config
 make %{?_smp_mflags}
+popd
 %endif
 
 
@@ -83,10 +98,11 @@ install -D -m 644 %{ini_name} %{buildroot}%{php_ztsinidir}/%{ini_name}
 %endif
 
 # Test & Documentation
-cd NTS
+pushd NTS
 for i in $(grep 'role="doc"' ../package.xml | sed -e 's/^.*name="//;s/".*$//')
 do install -Dpm 644 $i %{buildroot}%{pecl_docdir}/%{pecl_name}/$i
 done
+popd
 
 
 %check
@@ -102,6 +118,14 @@ done
     --modules | grep OAuth
 %endif
 
+%post
+%{pecl_install} %{pecl_xmldir}/%{pecl_name}.xml >/dev/null || :
+
+
+%postun
+if [ $1 -eq 0 ]; then
+    %{pecl_uninstall} %{pecl_name} >/dev/null || :
+fi
 
 %files
 %license NTS/LICENSE
@@ -118,6 +142,9 @@ done
 
 
 %changelog
+* Wed May 31 2017 Ben Harper <ben.harper@rackspace.com> - 2.0.2-1.ius
+- Port from Fedora
+
 * Sat Feb 11 2017 Fedora Release Engineering <releng@fedoraproject.org> - 2.0.2-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
 
