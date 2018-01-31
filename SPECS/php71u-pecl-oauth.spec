@@ -1,44 +1,54 @@
 # IUS spec file for php71u-pecl-oauth, forked from Fedora:
-%{!?__pecl:      %global __pecl       %{_bindir}/pecl}
 
 %global pecl_name oauth
-%global with_zts  0%{?__ztsphp:1}
 %global ini_name  40-%{pecl_name}.ini
-%global php_base php71u
+%global php       php71u
 
-Name:		%{php_base}-pecl-%{pecl_name}
-Version:	2.0.2
-Release:	1.ius%{?dist}
-Summary:	PHP OAuth consumer extension
-Group:		Development/Languages
-License:	BSD
-URL:		http://pecl.php.net/package/oauth
-Source0:	http://pecl.php.net/get/%{pecl_name}-%{version}.tgz
+%bcond_without zts
 
-BuildRequires:	%{php_base}-devel
-BuildRequires:	pecl >= 1.10.0
-BuildRequires:	libcurl-devel
-BuildRequires:	pcre-devel
+Name:           %{php}-pecl-%{pecl_name}
+Version:        2.0.2
+Release:        1.ius%{?dist}
+Summary:        PHP OAuth consumer extension
+Group:          Development/Languages
+License:        BSD
+URL:            https://pecl.php.net/package/oauth
+Source0:        https://pecl.php.net/get/%{pecl_name}-%{version}.tgz
 
-Requires:	php(zend-abi) = %{php_zend_api}
-Requires:	php(api) = %{php_core_api}
+BuildRequires:  %{php}-devel
+BuildRequires:  pecl >= 1.10.0
+BuildRequires:  libcurl-devel
+BuildRequires:  pcre-devel
+
+Requires:       php(zend-abi) = %{php_zend_api}
+Requires:       php(api) = %{php_core_api}
 
 Requires(post): pecl >= 1.10.0
 Requires(postun): pecl >= 1.10.0
 
-Provides:	php-pecl(%{pecl_name}) = %{version}
-Provides:	php-pecl(%{pecl_name})%{_isa} = %{version}
-Provides:	php-%{pecl_name} = %{version}
-Provides:	php-%{pecl_name}%{_isa} = %{version}
-
+# provide the stock name
 Provides:       php-pecl-%{pecl_name} = %{version}
-Provides:	php-pecl-%{pecl_name}%{?_isa} = %{version}
-Provides:       %{php_base}-%{pecl_name} = %{version}
-Provides:       %{php_base}-pecl(%{pecl_name}) = %{version}
-Provides:	%{php_base}-pecl(%{pecl_name})%{?_isa} = %{version}
-Provides:	%{php_base}-%{pecl_name}%{?_isa} = %{version}
+Provides:       php-pecl-%{pecl_name}%{?_isa} = %{version}
 
-Conflicts:	php-pecl-%{pecl_name} < %{version}
+# provide the stock and IUS names without pecl
+Provides:       php-%{pecl_name} = %{version}
+Provides:       php-%{pecl_name}%{?_isa} = %{version}
+Provides:       %{php}-%{pecl_name} = %{version}
+Provides:       %{php}-%{pecl_name}%{?_isa} = %{version}
+
+# provide the stock and IUS names in pecl() format
+Provides:       php-pecl(%{pecl_name}) = %{version}
+Provides:       php-pecl(%{pecl_name})%{?_isa} = %{version}
+Provides:       %{php}-pecl(%{pecl_name}) = %{version}
+Provides:       %{php}-pecl(%{pecl_name})%{?_isa} = %{version}
+
+# conflict with the stock name
+Conflicts:      php-pecl-%{pecl_name} < %{version}
+
+%{?filter_provides_in: %filter_provides_in %{php_extdir}/.*\.so$}
+%{?filter_provides_in: %filter_provides_in %{php_ztsextdir}/.*\.so$}
+%{?filter_setup}
+
 
 %description
 OAuth is an authorization protocol built on top of HTTP which allows
@@ -55,14 +65,12 @@ sed -e 's/role="test"/role="src"/' \
     -e '/LICENSE/s/role="doc"/role="src"/' \
     -i package.xml
 
-
-cat >%{ini_name} << 'EOF'
+cat > %{ini_name} << EOF
 ; Enable %{pecl_name} extension module
 extension=%{pecl_name}.so
 EOF
 
-%if %{with_zts}
-# duplicate for ZTS build
+%if %{with zts}
 cp -pr NTS ZTS
 %endif
 
@@ -71,38 +79,34 @@ cp -pr NTS ZTS
 pushd NTS
 %{_bindir}/phpize
 %configure --with-php-config=%{_bindir}/php-config
-make %{?_smp_mflags}
+%make_build
 popd
 
-%if %{with_zts}
+%if %{with zts}
 pushd ZTS
 %{_bindir}/zts-phpize
 %configure --with-php-config=%{_bindir}/zts-php-config
-make %{?_smp_mflags}
+%make_build
 popd
 %endif
 
 
 %install
 make install -C NTS INSTALL_ROOT=%{buildroot}
-
-# Drop in the bit of configuration
 install -D -m 644 %{ini_name} %{buildroot}%{php_inidir}/%{ini_name}
 
 # Install XML package description
-install -D -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{name}.xml
+install -D -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{pecl_name}.xml
 
-%if %{with_zts}
+%if %{with zts}
 make install -C ZTS INSTALL_ROOT=%{buildroot}
 install -D -m 644 %{ini_name} %{buildroot}%{php_ztsinidir}/%{ini_name}
 %endif
 
 # Test & Documentation
-pushd NTS
-for i in $(grep 'role="doc"' ../package.xml | sed -e 's/^.*name="//;s/".*$//')
-do install -Dpm 644 $i %{buildroot}%{pecl_docdir}/%{pecl_name}/$i
+for i in $(grep 'role="doc"' package.xml | sed -e 's/^.*name="//;s/".*$//')
+do install -D -p -m 644 NTS/$i %{buildroot}%{pecl_docdir}/%{pecl_name}/$i
 done
-popd
 
 
 %check
@@ -111,12 +115,13 @@ popd
     -d extension=%{buildroot}%{php_extdir}/%{pecl_name}.so \
     --modules | grep OAuth
 
-%if %{with_zts}
+%if %{with zts}
 : Minimal load test for ZTS extension
 %{__ztsphp} -n \
     -d extension=%{buildroot}%{php_ztsextdir}/%{pecl_name}.so \
     --modules | grep OAuth
 %endif
+
 
 %post
 %{pecl_install} %{pecl_xmldir}/%{pecl_name}.xml >/dev/null || :
@@ -127,15 +132,16 @@ if [ $1 -eq 0 ]; then
     %{pecl_uninstall} %{pecl_name} >/dev/null || :
 fi
 
+
 %files
 %license NTS/LICENSE
 %doc %{pecl_docdir}/%{pecl_name}
-%{pecl_xmldir}/%{name}.xml
+%{pecl_xmldir}/%{pecl_name}.xml
 
-%config(noreplace) %{_sysconfdir}/php.d/%{ini_name}
+%config(noreplace) %{php_inidir}/%{ini_name}
 %{php_extdir}/%{pecl_name}.so
 
-%if %{with_zts}
+%if %{with zts}
 %config(noreplace) %{php_ztsinidir}/%{ini_name}
 %{php_ztsextdir}/%{pecl_name}.so
 %endif
