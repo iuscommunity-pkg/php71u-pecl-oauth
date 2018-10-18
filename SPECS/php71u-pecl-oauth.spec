@@ -1,4 +1,6 @@
-# IUS spec file for php71u-pecl-oauth, forked from Fedora:
+# IUS spec file for php71u-pecl-oauth, forked from:
+#
+# Fedora spec file for php-pecl-oauth
 
 %global pecl_name oauth
 %global ini_name  40-%{pecl_name}.ini
@@ -10,9 +12,8 @@ Name:           %{php}-pecl-%{pecl_name}
 Version:        2.0.2
 Release:        2.ius%{?dist}
 Summary:        PHP OAuth consumer extension
-Group:          Development/Languages
 License:        BSD
-URL:            https://pecl.php.net/package/oauth
+URL:            https://pecl.php.net/package/%{pecl_name}
 Source0:        https://pecl.php.net/get/%{pecl_name}-%{version}.tgz
 
 BuildRequires:  %{php}-devel
@@ -63,7 +64,6 @@ user names and passwords.
 %setup -q -c
 mv %{pecl_name}-%{version} NTS
 
-# Don't install/register tests
 sed -e 's/role="test"/role="src"/' \
     -e '/LICENSE/s/role="doc"/role="src"/' \
     -i package.xml
@@ -95,33 +95,31 @@ popd
 
 
 %install
-make install -C NTS INSTALL_ROOT=%{buildroot}
+make -C NTS install INSTALL_ROOT=%{buildroot}
 install -D -m 644 %{ini_name} %{buildroot}%{php_inidir}/%{ini_name}
 
-# Install XML package description
-install -D -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{pecl_name}.xml
-
 %if %{with zts}
-make install -C ZTS INSTALL_ROOT=%{buildroot}
+make -C ZTS install INSTALL_ROOT=%{buildroot}
 install -D -m 644 %{ini_name} %{buildroot}%{php_ztsinidir}/%{ini_name}
 %endif
 
-# Test & Documentation
+install -D -p -m 644 package.xml %{buildroot}%{pecl_xmldir}/%{pecl_name}.xml
+
 for i in $(grep 'role="doc"' package.xml | sed -e 's/^.*name="//;s/".*$//')
 do install -D -p -m 644 NTS/$i %{buildroot}%{pecl_docdir}/%{pecl_name}/$i
 done
 
 
 %check
-: Minimal load test for NTS extension
-%{__php} -n \
-    -d extension=%{buildroot}%{php_extdir}/%{pecl_name}.so \
+%{__php} \
+    --no-php-ini \
+    --define extension=%{buildroot}%{php_extdir}/%{pecl_name}.so \
     --modules | grep OAuth
 
 %if %{with zts}
-: Minimal load test for ZTS extension
-%{__ztsphp} -n \
-    -d extension=%{buildroot}%{php_ztsextdir}/%{pecl_name}.so \
+%{__ztsphp} \
+    --no-php-ini \
+    --define extension=%{buildroot}%{php_ztsextdir}/%{pecl_name}.so \
     --modules | grep OAuth
 %endif
 
@@ -149,12 +147,12 @@ fi
 %doc %{pecl_docdir}/%{pecl_name}
 %{pecl_xmldir}/%{pecl_name}.xml
 
-%config(noreplace) %{php_inidir}/%{ini_name}
 %{php_extdir}/%{pecl_name}.so
+%config(noreplace) %{php_inidir}/%{ini_name}
 
 %if %{with zts}
-%config(noreplace) %{php_ztsinidir}/%{ini_name}
 %{php_ztsextdir}/%{pecl_name}.so
+%config(noreplace) %{php_ztsinidir}/%{ini_name}
 %endif
 
 
