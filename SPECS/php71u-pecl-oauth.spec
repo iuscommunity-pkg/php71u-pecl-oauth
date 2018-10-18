@@ -9,8 +9,8 @@
 %bcond_without zts
 
 Name:           %{php}-pecl-%{pecl_name}
-Version:        2.0.2
-Release:        2.ius%{?dist}
+Version:        2.0.3
+Release:        1.ius%{?dist}
 Summary:        PHP OAuth consumer extension
 License:        BSD
 URL:            https://pecl.php.net/package/%{pecl_name}
@@ -157,6 +157,9 @@ fi
 
 
 %changelog
+* Thu Oct 18 2018 Carl George <carl@george.computer> - 2.0.3-1.ius
+- Latest upstream
+
 * Wed Jan 31 2018 Carl George <carl@george.computer> - 2.0.2-2.ius
 - Remove pear requirement and update scriptlets (adapted from remirepo)
 
